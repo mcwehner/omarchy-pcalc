@@ -125,7 +125,7 @@ Item {
   function copyToClipboard(value) {
     if (!value)
       return
-    Quickshell.execDetached(["bash", "-c", "printf %s " + Util.shellQuote(value) + " | wl-copy"])
+    Quickshell.execDetached(["wl-copy", "--", value])
   }
 
   function copyCurrent() {
