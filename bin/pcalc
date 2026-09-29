@@ -35,18 +35,34 @@ class ExprError(ValueError):
     pass
 
 
+def check_size(value):
+    if isinstance(value, int) and not isinstance(value, bool) and value.bit_length() > MAX_BITS:
+        raise ExprError("result too large")
+    return value
+
+
+def pow_too_large(base, exp):
+    # |base|**exp has more than MAX_BITS bits if exp * floor(log2(|base|)) >= MAX_BITS.
+    # Checking this before operator.pow avoids allocating a huge integer.
+    if not isinstance(base, int) or not isinstance(exp, int):
+        return False
+    if exp <= 0 or abs(base) <= 1:
+        return False
+    return exp * (abs(base).bit_length() - 1) >= MAX_BITS
+
+
 def eval_node(node):
     if isinstance(node, ast.Expression):
         return eval_node(node.body)
     if isinstance(node, ast.Constant):
         if isinstance(node.value, bool) or not isinstance(node.value, (int, float)):
             raise ExprError("unsupported literal")
-        return node.value
+        return check_size(node.value)
     if isinstance(node, ast.UnaryOp):
         op = UNARYOPS.get(type(node.op))
         if op is None:
             raise ExprError("unsupported operator")
-        return op(eval_node(node.operand))
+        return check_size(op(eval_node(node.operand)))
     if isinstance(node, ast.BinOp):
         op = BINOPS.get(type(node.op))
         if op is None:
@@ -55,14 +71,19 @@ def eval_node(node):
         right = eval_node(node.right)
         if isinstance(node.op, ast.LShift) and isinstance(right, int) and right > MAX_BITS:
             raise ExprError("shift too large")
+        if isinstance(node.op, ast.Pow) and pow_too_large(left, right):
+            raise ExprError("result too large")
         try:
-            return op(left, right)
+            value = op(left, right)
         except TypeError as exc:
             raise ExprError("invalid operands") from exc
         except ZeroDivisionError as exc:
             raise ExprError("division by zero") from exc
         except ValueError as exc:
             raise ExprError("invalid operands") from exc
+        except OverflowError as exc:
+            raise ExprError("result too large") from exc
+        return check_size(value)
     raise ExprError("invalid expression")
 
 
@@ -74,10 +95,7 @@ def evaluate(expr):
         tree = ast.parse(expr, mode="eval")
     except SyntaxError as exc:
         raise ExprError("invalid expression") from exc
-    value = eval_node(tree)
-    if isinstance(value, int) and not isinstance(value, bool) and value.bit_length() > MAX_BITS:
-        raise ExprError("result too large")
-    return value
+    return eval_node(tree)
 
 
 def format_result(value):
