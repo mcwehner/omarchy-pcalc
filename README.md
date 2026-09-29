@@ -34,7 +34,7 @@ applied cleanly.
 - `esc` closes the overlay
 
 Expressions support `+ - * / // % **`, bitwise `& | ^ ~ << >>`, parentheses,
-and `0x` / `0b` / `0o` literals.
+and `0x` / `0b` / `0o` literals. Integer results are limited to 4096 bits.
 
 ## CLI
 
