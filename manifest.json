@@ -4,6 +4,7 @@
   "name": "Programmer calculator",
   "version": "1.0.0",
   "author": "mcwehner",
+  "license": "MIT",
   "description": "Simple programmer calculator overlay backed by pcalc",
   "kinds": [
     "overlay"
