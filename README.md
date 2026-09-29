@@ -11,6 +11,15 @@ omarchy plugin add https://github.com/mcwehner/omarchy-pcalc.git --enable
 
 Requires `python3` and `wl-copy` (from `wl-clipboard`).
 
+## Update
+
+```bash
+omarchy plugin update mcwehner.pcalc
+```
+
+Then run `omarchy restart shell` so the overlay picks up the new files. A CLI
+symlink to the plugin folder does not need to be recreated.
+
 ## Keybinding
 
 Toggle the overlay with `omarchy-shell shell toggle mcwehner.pcalc`. To use it
