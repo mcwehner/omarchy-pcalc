@@ -52,3 +52,17 @@ To put it on your `PATH`, symlink it:
 ```bash
 ln -s ~/.config/omarchy/plugins/mcwehner.pcalc/bin/pcalc ~/.local/bin/pcalc
 ```
+
+## Removal
+
+```bash
+omarchy plugin remove mcwehner.pcalc
+```
+
+This disables the plugin and deletes its folder. Then undo anything you
+added by hand:
+
+- **Keybinding:** delete the pcalc lines from `~/.config/hypr/bindings.lua`,
+  including the `hl.unbind(...)` lines, so the default Omacalc bindings come
+  back. Run `hyprctl reload` and check `hyprctl configerrors`.
+- **CLI symlink:** `rm ~/.local/bin/pcalc`
