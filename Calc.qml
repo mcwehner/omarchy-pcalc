@@ -18,7 +18,7 @@ Item {
   property string evalExpr: ""
   property bool evalPending: false
   property bool evalStopping: false
-  property string pcalcPath: Quickshell.env("HOME") + "/.local/bin/pcalc"
+  readonly property string pcalcPath: decodeURIComponent(String(Qt.resolvedUrl("bin/pcalc")).replace(/^file:\/\//, ""))
 
   property color background: Color.menu.background
   property color foreground: Color.menu.text
@@ -174,7 +174,7 @@ Item {
 
   Process {
     id: evalProc
-    command: [root.pcalcPath, "--json", "--", root.evalExpr]
+    command: ["python3", root.pcalcPath, "--json", "--", root.evalExpr]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.applyOutput(text)

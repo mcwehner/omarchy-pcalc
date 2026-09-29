@@ -1,0 +1,189 @@
+#!/usr/bin/env python3
+
+import argparse
+import ast
+import json
+import operator
+import subprocess
+import sys
+
+MAX_BITS = 4096
+
+BINOPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.FloorDiv: operator.floordiv,
+    ast.Mod: operator.mod,
+    ast.Pow: operator.pow,
+    ast.BitAnd: operator.and_,
+    ast.BitOr: operator.or_,
+    ast.BitXor: operator.xor,
+    ast.LShift: operator.lshift,
+    ast.RShift: operator.rshift,
+}
+
+UNARYOPS = {
+    ast.UAdd: operator.pos,
+    ast.USub: operator.neg,
+    ast.Invert: operator.invert,
+}
+
+
+class ExprError(ValueError):
+    pass
+
+
+def eval_node(node):
+    if isinstance(node, ast.Expression):
+        return eval_node(node.body)
+    if isinstance(node, ast.Constant):
+        if isinstance(node.value, bool) or not isinstance(node.value, (int, float)):
+            raise ExprError("unsupported literal")
+        return node.value
+    if isinstance(node, ast.UnaryOp):
+        op = UNARYOPS.get(type(node.op))
+        if op is None:
+            raise ExprError("unsupported operator")
+        return op(eval_node(node.operand))
+    if isinstance(node, ast.BinOp):
+        op = BINOPS.get(type(node.op))
+        if op is None:
+            raise ExprError("unsupported operator")
+        left = eval_node(node.left)
+        right = eval_node(node.right)
+        if isinstance(node.op, ast.LShift) and isinstance(right, int) and right > MAX_BITS:
+            raise ExprError("shift too large")
+        try:
+            return op(left, right)
+        except TypeError as exc:
+            raise ExprError("invalid operands") from exc
+        except ZeroDivisionError as exc:
+            raise ExprError("division by zero") from exc
+        except ValueError as exc:
+            raise ExprError("invalid operands") from exc
+    raise ExprError("invalid expression")
+
+
+def evaluate(expr):
+    expr = expr.strip()
+    if not expr:
+        raise ExprError("empty expression")
+    try:
+        tree = ast.parse(expr, mode="eval")
+    except SyntaxError as exc:
+        raise ExprError("invalid expression") from exc
+    value = eval_node(tree)
+    if isinstance(value, int) and not isinstance(value, bool) and value.bit_length() > MAX_BITS:
+        raise ExprError("result too large")
+    return value
+
+
+def format_result(value):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ExprError("unsupported result")
+    if isinstance(value, int):
+        return {"ok": True, "dec": str(value), "hex": hex(value), "bin": bin(value)}
+    if value != value or value in (float("inf"), float("-inf")):
+        raise ExprError("invalid result")
+    text = format(value, ".12g")
+    return {"ok": True, "dec": text}
+
+
+def print_text(result):
+    print(result["dec"])
+    if "hex" in result:
+        print(result["hex"])
+        print(result["bin"])
+
+
+def copy_value(text):
+    try:
+        subprocess.run(["wl-copy"], input=text, text=True, check=True)
+    except FileNotFoundError as exc:
+        raise ExprError("wl-copy not found") from exc
+    except subprocess.CalledProcessError as exc:
+        raise ExprError("failed to copy") from exc
+
+
+def emit_error(message, as_json):
+    if as_json:
+        print(json.dumps({"ok": False, "error": message}, separators=(",", ":")))
+    else:
+        print(message, file=sys.stderr)
+
+
+def run_one(expr, as_json, copy_fmt):
+    try:
+        result = format_result(evaluate(expr))
+    except ExprError as exc:
+        emit_error(str(exc), as_json)
+        return 1
+    if as_json:
+        print(json.dumps(result, separators=(",", ":")))
+    else:
+        print_text(result)
+    if copy_fmt:
+        key = "dec" if copy_fmt == "dec" else copy_fmt
+        if key not in result:
+            emit_error("no %s representation" % copy_fmt, as_json)
+            return 1
+        try:
+            copy_value(result[key])
+        except ExprError as exc:
+            emit_error(str(exc), as_json)
+            return 1
+    return 0
+
+
+def repl():
+    while True:
+        try:
+            line = input("> ")
+        except EOFError:
+            print()
+            return 0
+        except KeyboardInterrupt:
+            print()
+            return 130
+        line = line.strip()
+        if not line:
+            continue
+        if line in (":q", ":quit", ":exit"):
+            return 0
+        try:
+            print_text(format_result(evaluate(line)))
+        except ExprError as exc:
+            print(exc, file=sys.stderr)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        prog="pcalc",
+        description="Programmer calculator: arithmetic, 0x/0b/0o literals, bitwise ops.",
+    )
+    parser.add_argument("-j", "--json", action="store_true", help="print JSON")
+    parser.add_argument(
+        "-c",
+        "--copy",
+        nargs="?",
+        const="dec",
+        choices=("dec", "hex", "bin"),
+        help="copy a representation to the clipboard (default: dec)",
+    )
+    parser.add_argument("expr", nargs="*", help="expression to evaluate")
+    args = parser.parse_args(argv)
+    expr = " ".join(args.expr).strip()
+    if not expr:
+        if sys.stdin.isatty() and not args.json and args.copy is None:
+            return repl()
+        expr = sys.stdin.read().strip()
+        if not expr:
+            emit_error("empty expression", args.json)
+            return 1
+    return run_one(expr, args.json, args.copy)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
