@@ -11,6 +11,22 @@ omarchy plugin add https://github.com/mcwehner/omarchy-pcalc.git --enable
 
 Requires `python3` and `wl-copy` (from `wl-clipboard`).
 
+## Keybinding
+
+Toggle the overlay with `omarchy-shell shell toggle mcwehner.pcalc`. To use it
+in place of Omacalc, add this to `~/.config/hypr/bindings.lua`:
+
+```lua
+-- Replace the default Omacalc bindings with pcalc
+hl.unbind("SUPER + CTRL + Q")
+hl.unbind("XF86Calculator")
+o.bind("SUPER + CTRL + Q", "Calculator", "omarchy-shell shell toggle mcwehner.pcalc")
+o.bind("XF86Calculator", "Calculator", "omarchy-shell shell toggle mcwehner.pcalc")
+```
+
+Then run `hyprctl reload` and check `hyprctl configerrors` to make sure it
+applied cleanly.
+
 ## Usage
 
 - `enter` copies the selected representation and closes the overlay
