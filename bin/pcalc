@@ -62,7 +62,14 @@ def eval_node(node):
         op = UNARYOPS.get(type(node.op))
         if op is None:
             raise ExprError("unsupported operator")
-        return check_size(op(eval_node(node.operand)))
+        operand = eval_node(node.operand)
+        try:
+            value = op(operand)
+        except TypeError as exc:
+            raise ExprError("invalid operands") from exc
+        except OverflowError as exc:
+            raise ExprError("result too large") from exc
+        return check_size(value)
     if isinstance(node, ast.BinOp):
         op = BINOPS.get(type(node.op))
         if op is None:
@@ -93,9 +100,28 @@ def evaluate(expr):
         raise ExprError("empty expression")
     try:
         tree = ast.parse(expr, mode="eval")
+        return eval_node(tree)
+    except ExprError:
+        raise
     except SyntaxError as exc:
         raise ExprError("invalid expression") from exc
-    return eval_node(tree)
+    except RecursionError as exc:
+        raise ExprError("expression too deep") from exc
+    except MemoryError as exc:
+        raise ExprError("result too large") from exc
+
+
+def format_eval(expr):
+    try:
+        return format_result(evaluate(expr))
+    except ExprError:
+        raise
+    except RecursionError as exc:
+        raise ExprError("expression too deep") from exc
+    except MemoryError as exc:
+        raise ExprError("result too large") from exc
+    except Exception as exc:
+        raise ExprError("invalid expression") from exc
 
 
 def format_result(value):
@@ -134,7 +160,7 @@ def emit_error(message, as_json):
 
 def run_one(expr, as_json, copy_fmt):
     try:
-        result = format_result(evaluate(expr))
+        result = format_eval(expr)
     except ExprError as exc:
         emit_error(str(exc), as_json)
         return 1
@@ -171,7 +197,7 @@ def repl():
         if line in (":q", ":quit", ":exit"):
             return 0
         try:
-            print_text(format_result(evaluate(line)))
+            print_text(format_eval(line))
         except ExprError as exc:
             print(exc, file=sys.stderr)
 
