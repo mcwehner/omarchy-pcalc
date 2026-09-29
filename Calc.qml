@@ -16,8 +16,12 @@ Item {
   property var result: ({})
   property int selectedFormat: 0
   property string evalExpr: ""
+  property string evalStartedExpr: ""
+  property string resultExpr: ""
+  property int evalSeq: 0
+  property int evalStartedSeq: 0
   property bool evalPending: false
-  property bool evalStopping: false
+  property bool copyAfterEval: false
   readonly property string pcalcPath: decodeURIComponent(String(Qt.resolvedUrl("bin/pcalc")).replace(/^file:\/\//, ""))
 
   property color background: Color.menu.background
@@ -41,11 +45,27 @@ Item {
     return out
   }
 
-  function open(payloadJson) {
+  function resetEval() {
+    debounce.stop()
+    root.evalPending = false
+    root.copyAfterEval = false
+    root.evalExpr = ""
+    root.evalStartedExpr = ""
+    root.resultExpr = ""
+    root.evalSeq += 1
+    if (evalProc.running)
+      evalProc.running = false
+  }
+
+  function clearResult() {
     root.result = ({})
     root.selectedFormat = 0
-    root.evalExpr = ""
-    root.evalPending = false
+    root.resultExpr = ""
+  }
+
+  function open(payloadJson) {
+    root.resetEval()
+    root.clearResult()
     root.opened = true
     Qt.callLater(function() {
       if (inputField) {
@@ -57,10 +77,7 @@ Item {
 
   function close() {
     root.opened = false
-    if (evalProc.running) {
-      root.evalStopping = true
-      evalProc.running = false
-    }
+    root.resetEval()
   }
 
   function dismiss() {
@@ -111,58 +128,86 @@ Item {
     Quickshell.execDetached(["bash", "-c", "printf %s " + Util.shellQuote(value) + " | wl-copy"])
   }
 
+  function copyCurrent() {
+    var value = root.selectedValue()
+    if (!value)
+      return false
+    root.copyToClipboard(value)
+    return true
+  }
+
   function copyAndDismiss() {
     var expr = inputField.text.trim()
     if (!expr) {
       root.dismiss()
       return
     }
-    var value = root.selectedValue()
-    if (!value)
+    if (expr === root.resultExpr && root.copyCurrent()) {
+      root.dismiss()
       return
-    root.copyToClipboard(value)
-    root.dismiss()
+    }
+    root.copyAfterEval = true
+    debounce.stop()
+    root.startEval()
   }
 
   function scheduleEval() {
+    root.copyAfterEval = false
     debounce.restart()
   }
 
   function startEval() {
+    if (!root.opened)
+      return
     var expr = inputField ? inputField.text.trim() : ""
     if (!expr) {
-      root.result = ({})
-      root.selectedFormat = 0
+      root.evalPending = false
+      root.copyAfterEval = false
       root.evalExpr = ""
+      root.evalSeq += 1
+      if (evalProc.running)
+        evalProc.running = false
+      root.clearResult()
       return
     }
     root.evalExpr = expr
+    root.evalSeq += 1
     if (evalProc.running) {
       root.evalPending = true
-      root.evalStopping = true
       evalProc.running = false
       return
     }
-    root.evalStopping = false
+    root.evalPending = false
+    root.evalStartedSeq = root.evalSeq
+    root.evalStartedExpr = expr
     evalProc.running = true
   }
 
   function applyOutput(raw) {
-    if (root.evalStopping || !root.opened)
+    if (!root.opened || root.evalStartedSeq !== root.evalSeq)
       return
     var text = String(raw || "").trim()
-    if (!text)
-      return
+    var parsed = null
     try {
-      var parsed = JSON.parse(text)
+      parsed = JSON.parse(text)
     } catch (e) {
+      parsed = null
+    }
+    if (!parsed || !parsed.ok) {
+      root.copyAfterEval = false
+      root.clearResult()
       return
     }
-    if (!parsed || !parsed.ok)
-      return
     root.result = parsed
+    root.resultExpr = root.evalStartedExpr
     if (root.selectedFormat >= root.formats.length)
       root.selectedFormat = 0
+    if (root.copyAfterEval) {
+      root.copyAfterEval = false
+      var expr = inputField ? inputField.text.trim() : ""
+      if (expr === root.resultExpr && root.copyCurrent())
+        root.dismiss()
+    }
   }
 
   Timer {
@@ -180,6 +225,10 @@ Item {
       onStreamFinished: root.applyOutput(text)
     }
     onExited: function(exitCode) {
+      if (!root.opened) {
+        root.evalPending = false
+        return
+      }
       if (root.evalPending) {
         root.evalPending = false
         Qt.callLater(root.startEval)
