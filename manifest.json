@@ -3,12 +3,10 @@
   "id": "mcwehner.pcalc",
   "name": "Programmer calculator",
   "version": "1.0.0",
-  "author": "mcwehner",
+  "author": "Michael Wehner",
   "license": "MIT",
   "description": "Simple programmer calculator overlay backed by pcalc",
-  "kinds": [
-    "overlay"
-  ],
+  "kinds": ["overlay"],
   "entryPoints": {
     "overlay": "Calc.qml"
   }
