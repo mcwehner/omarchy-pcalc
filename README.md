@@ -6,7 +6,7 @@ expression and see the result in decimal, hex, and binary.
 ## Install
 
 ```bash
-omarchy plugin add <git-url> --enable
+omarchy plugin add https://github.com/mcwehner/omarchy-pcalc.git --enable
 ```
 
 Requires `python3` and `wl-copy` (from `wl-clipboard`).
