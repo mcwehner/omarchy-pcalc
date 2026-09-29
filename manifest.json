@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "mcwehner.pcalc",
+  "name": "Programmer calculator",
+  "version": "1.0.0",
+  "author": "mcwehner",
+  "description": "Simple programmer calculator overlay backed by pcalc",
+  "kinds": [
+    "overlay"
+  ],
+  "entryPoints": {
+    "overlay": "Calc.qml"
+  }
+}
