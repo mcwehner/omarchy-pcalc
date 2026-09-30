@@ -20,7 +20,7 @@ omarchy plugin update mcwehner.pcalc
 Then run `omarchy restart shell` so the overlay picks up the new files. A CLI
 symlink to the plugin folder does not need to be recreated.
 
-## Keybinding
+## Overlay
 
 Toggle the overlay with `omarchy-shell shell toggle mcwehner.pcalc`. To use it
 in place of Omacalc, add this to `~/.config/hypr/bindings.lua`:
@@ -36,14 +36,12 @@ o.bind("XF86Calculator", "Calculator", "omarchy-shell shell toggle mcwehner.pcal
 Then run `hyprctl reload` and check `hyprctl configerrors` to make sure it
 applied cleanly.
 
-## Usage
-
 - `enter` copies the selected representation and closes the overlay
 - `tab` / `shift+tab` / arrow keys cycle between dec, hex, and bin
 - `esc` closes the overlay
 
-Expressions support `+ - * / // % **`, bitwise `& | ^ ~ << >>`, parentheses,
-and `0x` / `0b` / `0o` literals. Integer results are limited to 4096 bits.
+The overlay evaluates expressions with `bin/pcalc`. See [CLI](#cli) for
+supported operators and literals.
 
 ## CLI
 
@@ -62,19 +60,43 @@ To put it on your `PATH`, symlink it:
 ln -s ~/.config/omarchy/plugins/mcwehner.pcalc/bin/pcalc ~/.local/bin/pcalc
 ```
 
-## Tests
+### Operators and literals
 
-CLI tests are a language-agnostic JSONL corpus plus a runner that only
-invokes the binary. Point `$PCALC` at a port to run the same suite:
+pcalc evaluates one arithmetic expression. Parentheses and Python operator
+precedence apply. Integer results are limited to 4096 bits.
 
-```bash
-tests/run
-JOBS=1 tests/run
-PCALC=/path/to/other-pcalc tests/run
-```
+| Operators | Meaning |
+| --- | --- |
+| `+` `-` `*` `/` | add, subtract, multiply, true division |
+| `//` `%` | floor division, modulo |
+| `**` | exponentiation (right-associative) |
+| `+x` `-x` `~` | unary plus, minus, bitwise invert |
+| `&` `\|` `^` | bitwise and, or, xor |
+| `<<` `>>` | left and right shift |
 
-Requires `jq`. Default concurrency is `min(nproc, 8)`; set `JOBS` to override.
-REPL, clipboard, and `--help` are out of scope.
+Literals: decimal integers, `0x` / `0b` / `0o` integers, and floats
+(`1.5`, `2.5e1`).
+
+True division (`/`) always yields a float. Bitwise operators require integers.
+Function calls, comparisons, boolean `and` / `or` / `not`, and variables are
+not supported.
+
+### Output and flags
+
+Integer results print three lines: decimal, hex (`0x…`), and binary (`0b…`).
+Floats print a single decimal line (up to 12 significant digits).
+
+`-j` / `--json` prints one JSON object. Success looks like
+`{"ok":true,"dec":"4080","hex":"0xff0","bin":"0b111111110000"}`; floats omit
+`hex` and `bin`. Failures print `{"ok":false,"error":"…"}` on stdout and exit
+1.
+
+`-c` / `--copy` `[dec|hex|bin]` copies one representation with `wl-copy`
+(default: `dec`). Hex and bin are only available for integer results.
+
+With no expression, a TTY starts a REPL (`:q`, `:quit`, or `:exit` to leave).
+Otherwise the expression is read from stdin. Arguments are joined with spaces
+(`pcalc 1 + 1`). Use `--` before an expression that starts with `-`.
 
 ## Removal
 
