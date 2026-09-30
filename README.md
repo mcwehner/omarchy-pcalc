@@ -109,6 +109,4 @@ added by hand:
 - **Keybinding:** delete the pcalc lines from `~/.config/hypr/bindings.lua`,
   including the `hl.unbind(...)` lines, so the default Omacalc bindings come
   back. Run `hyprctl reload` and check `hyprctl configerrors`.
-- **Bar layout:** if a 1.1.x install left `{ "id": "mcwehner.pcalc" }` in
-  `bar.layout`, delete that entry from `~/.config/omarchy/shell.json`.
 - **CLI symlink:** `rm ~/.local/bin/pcalc`
