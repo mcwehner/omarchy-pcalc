@@ -4,65 +4,55 @@
 #
 # Usage:
 #   tests/run
+#   JOBS=1 tests/run
 #   PCALC=/path/to/pcalc tests/run
 #
-# Requires jq.
+# Requires jq and GNU xargs (-P). Parallelism is xargs -P, capped at 8
+# by default (override with JOBS).
 
 set -eu
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+script_path=$script_dir/run
 root=$(CDPATH= cd -- "$script_dir/.." && pwd)
 PCALC=${PCALC:-"$root/bin/pcalc"}
 CASES=${CASES:-"$script_dir/cases.jsonl"}
+export PCALC
 
-if ! command -v jq >/dev/null 2>&1; then
-	echo "tests/run requires jq. Install it and re-run." >&2
-	exit 2
-fi
-
-if [ ! -f "$CASES" ]; then
-	echo "cases file not found: $CASES" >&2
-	exit 2
-fi
-
-tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT
-
-passed=0
-failed=0
-lineno=0
-
-fail() {
+fail_case() {
 	name=$1
 	shift
-	failed=$((failed + 1))
-	printf 'FAIL %s\n' "$name"
-	for msg in "$@"; do
-		printf '     %s\n' "$msg"
-	done
-	printf '     stdout:\n'
-	sed 's/^/       /' "$tmp/stdout" || true
-	printf '     stderr:\n'
-	sed 's/^/       /' "$tmp/stderr" || true
+	{
+		printf 'FAIL %s\n' "$name"
+		for msg in "$@"; do
+			printf '     %s\n' "$msg"
+		done
+		printf '     stdout:\n'
+		sed 's/^/       /' "$work/stdout" 2>/dev/null || true
+		printf '     stderr:\n'
+		sed 's/^/       /' "$work/stderr" 2>/dev/null || true
+	} >"$report"
+	echo fail >"$status_file"
 }
 
-while IFS= read -r line || [ -n "$line" ]; do
-	lineno=$((lineno + 1))
-	case "$line" in
-	'' | '#'*)
-		continue
-		;;
-	esac
+run_one() {
+	casefile=$1
+	id=$(basename "$casefile" .case)
+	work=$RUN_TMP/work/$id
+	report=$RUN_TMP/results/$id.report
+	status_file=$RUN_TMP/results/$id.status
+	mkdir -p "$work"
+	line=$(cat "$casefile")
+	lineno=$(cat "$casefile.lineno")
 
-	if ! printf '%s\n' "$line" | jq -e . >/dev/null 2>"$tmp/jq.err"; then
-		failed=$((failed + 1))
-		printf 'FAIL cases.jsonl:%s (invalid JSON)\n' "$lineno"
-		sed 's/^/     /' "$tmp/jq.err" || true
-		continue
+	if ! printf '%s\n' "$line" | jq -e . >/dev/null 2>"$work/jq.err"; then
+		fail_case "cases.jsonl:$lineno (invalid JSON)"
+		sed 's/^/     /' "$work/jq.err" >>"$report" || true
+		return 0
 	fi
 
-	printf '%s\n' "$line" | jq -j '.name' >"$tmp/name"
-	name=$(cat "$tmp/name")
+	printf '%s\n' "$line" | jq -j '.name' >"$work/name"
+	name=$(cat "$work/name")
 	if [ -z "$name" ] || [ "$name" = "null" ]; then
 		name="cases.jsonl:$lineno"
 	fi
@@ -70,9 +60,8 @@ while IFS= read -r line || [ -n "$line" ]; do
 	has_stdout=$(printf '%s\n' "$line" | jq '.expected | has("stdout")')
 	has_json=$(printf '%s\n' "$line" | jq '.expected | has("stdout_json")')
 	if [ "$has_stdout" = "true" ] && [ "$has_json" = "true" ]; then
-		failed=$((failed + 1))
-		printf 'FAIL %s (stdout and stdout_json both set)\n' "$name"
-		continue
+		fail_case "$name" "stdout and stdout_json both set"
+		return 0
 	fi
 
 	args_sh=$(printf '%s\n' "$line" | jq -r '.args | @sh')
@@ -80,16 +69,16 @@ while IFS= read -r line || [ -n "$line" ]; do
 
 	set +e
 	if printf '%s\n' "$line" | jq -e 'has("stdin")' >/dev/null; then
-		printf '%s\n' "$line" | jq -j '.stdin' >"$tmp/stdin"
-		"$PCALC" "$@" <"$tmp/stdin" >"$tmp/stdout" 2>"$tmp/stderr"
+		printf '%s\n' "$line" | jq -j '.stdin' >"$work/stdin"
+		"$PCALC" "$@" <"$work/stdin" >"$work/stdout" 2>"$work/stderr"
 	else
-		"$PCALC" "$@" </dev/null >"$tmp/stdout" 2>"$tmp/stderr"
+		"$PCALC" "$@" </dev/null >"$work/stdout" 2>"$work/stderr"
 	fi
 	actual_exit=$?
 	set -e
 
 	expected_exit=$(printf '%s\n' "$line" | jq -r '.expected.exit')
-	printf '%s\n' "$line" | jq -j '.expected.stderr // ""' >"$tmp/expected_stderr"
+	printf '%s\n' "$line" | jq -j '.expected.stderr // ""' >"$work/expected_stderr"
 
 	msgs=
 	if [ "$actual_exit" != "$expected_exit" ]; then
@@ -97,26 +86,26 @@ while IFS= read -r line || [ -n "$line" ]; do
 	fi
 
 	if [ "$has_json" = "true" ]; then
-		if ! jq -e . "$tmp/stdout" >/dev/null 2>"$tmp/jq.err"; then
+		if ! jq -e . "$work/stdout" >/dev/null 2>"$work/jq.err"; then
 			if [ -n "$msgs" ]; then
 				msgs="$msgs|stdout is not JSON"
 			else
 				msgs="stdout is not JSON"
 			fi
 		else
-			if ! printf '%s\n' "$line" | jq -e --slurpfile actual "$tmp/stdout" \
+			if ! printf '%s\n' "$line" | jq -e --slurpfile actual "$work/stdout" \
 				'.expected.stdout_json == $actual[0]' >/dev/null; then
-				printf '%s\n' "$line" | jq -c '.expected.stdout_json' >"$tmp/expected_json"
+				printf '%s\n' "$line" | jq -c '.expected.stdout_json' >"$work/expected_json"
 				if [ -n "$msgs" ]; then
-					msgs="$msgs|JSON: expected $(cat "$tmp/expected_json")"
+					msgs="$msgs|JSON: expected $(cat "$work/expected_json")"
 				else
-					msgs="JSON: expected $(cat "$tmp/expected_json")"
+					msgs="JSON: expected $(cat "$work/expected_json")"
 				fi
 			fi
 		fi
 	else
-		printf '%s\n' "$line" | jq -j '.expected.stdout // ""' >"$tmp/expected_stdout"
-		if ! cmp -s "$tmp/expected_stdout" "$tmp/stdout"; then
+		printf '%s\n' "$line" | jq -j '.expected.stdout // ""' >"$work/expected_stdout"
+		if ! cmp -s "$work/expected_stdout" "$work/stdout"; then
 			if [ -n "$msgs" ]; then
 				msgs="$msgs|stdout differs"
 			else
@@ -125,7 +114,7 @@ while IFS= read -r line || [ -n "$line" ]; do
 		fi
 	fi
 
-	if ! cmp -s "$tmp/expected_stderr" "$tmp/stderr"; then
+	if ! cmp -s "$work/expected_stderr" "$work/stderr"; then
 		if [ -n "$msgs" ]; then
 			msgs="$msgs|stderr differs"
 		else
@@ -139,12 +128,98 @@ while IFS= read -r line || [ -n "$line" ]; do
 		# shellcheck disable=SC2086
 		set -- $msgs
 		IFS=$oldifs
-		fail "$name" "$@"
+		fail_case "$name" "$@"
 	else
-		passed=$((passed + 1))
-		printf 'ok   %s\n' "$name"
+		printf 'ok   %s\n' "$name" >"$report"
+		echo ok >"$status_file"
 	fi
+}
+
+if [ "${1:-}" = "--case" ]; then
+	if [ -z "${RUN_TMP:-}" ]; then
+		echo "tests/run --case requires RUN_TMP" >&2
+		exit 2
+	fi
+	run_one "$2"
+	exit 0
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+	echo "tests/run requires jq. Install it and re-run." >&2
+	exit 2
+fi
+
+if [ ! -f "$CASES" ]; then
+	echo "cases file not found: $CASES" >&2
+	exit 2
+fi
+
+default_jobs() {
+	n=4
+	if command -v nproc >/dev/null 2>&1; then
+		n=$(nproc)
+	elif command -v getconf >/dev/null 2>&1; then
+		n=$(getconf _NPROCESSORS_ONLN) || n=4
+	fi
+	if [ "$n" -gt 8 ]; then
+		n=8
+	fi
+	if [ "$n" -lt 1 ]; then
+		n=1
+	fi
+	printf '%s\n' "$n"
+}
+
+jobs=${JOBS:-$(default_jobs)}
+case "$jobs" in
+*[!0-9]* | '')
+	echo "JOBS must be a positive integer" >&2
+	exit 2
+	;;
+esac
+if [ "$jobs" -lt 1 ]; then
+	echo "JOBS must be a positive integer" >&2
+	exit 2
+fi
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+mkdir -p "$tmp/cases" "$tmp/work" "$tmp/results"
+export RUN_TMP=$tmp
+
+n=0
+lineno=0
+while IFS= read -r line || [ -n "$line" ]; do
+	lineno=$((lineno + 1))
+	case "$line" in
+	'' | '#'*)
+		continue
+		;;
+	esac
+	n=$((n + 1))
+	id=$(printf '%04d' "$n")
+	printf '%s\n' "$line" >"$tmp/cases/$id.case"
+	printf '%s\n' "$lineno" >"$tmp/cases/$id.case.lineno"
 done <"$CASES"
+
+if [ "$n" -eq 0 ]; then
+	printf '\n%s passed, %s failed\n' 0 0
+	exit 0
+fi
+
+find "$tmp/cases" -name '*.case' | sort | xargs -P "$jobs" -n 1 -r -- "$script_path" --case
+
+passed=0
+failed=0
+for status_file in "$tmp/results"/*.status; do
+	id=$(basename "$status_file" .status)
+	cat "$tmp/results/$id.report"
+	if [ "$(cat "$status_file")" = ok ]; then
+		passed=$((passed + 1))
+	else
+		failed=$((failed + 1))
+	fi
+done
 
 printf '\n%s passed, %s failed\n' "$passed" "$failed"
 if [ "$failed" -ne 0 ]; then

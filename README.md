@@ -69,10 +69,12 @@ invokes the binary. Point `$PCALC` at a port to run the same suite:
 
 ```bash
 tests/run
+JOBS=1 tests/run
 PCALC=/path/to/other-pcalc tests/run
 ```
 
-Requires `jq`. REPL, clipboard, and `--help` are out of scope.
+Requires `jq`. Default concurrency is `min(nproc, 8)`; set `JOBS` to override.
+REPL, clipboard, and `--help` are out of scope.
 
 ## Removal
 
