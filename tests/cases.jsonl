@@ -1,0 +1,84 @@
+{"name":"arith.add","args":["1+1"],"expected":{"exit":0,"stdout":"2\n0x2\n0b10\n"}}
+{"name":"arith.sub","args":["5-2"],"expected":{"exit":0,"stdout":"3\n0x3\n0b11\n"}}
+{"name":"arith.mul","args":["6*7"],"expected":{"exit":0,"stdout":"42\n0x2a\n0b101010\n"}}
+{"name":"arith.truediv","args":["1/2"],"expected":{"exit":0,"stdout":"0.5\n"}}
+{"name":"arith.truediv-integral-float","args":["8/2/2"],"expected":{"exit":0,"stdout":"2\n"}}
+{"name":"arith.floordiv","args":["5//2"],"expected":{"exit":0,"stdout":"2\n0x2\n0b10\n"}}
+{"name":"arith.floordiv-neg","args":["--","5//-2"],"expected":{"exit":0,"stdout":"-3\n-0x3\n-0b11\n"}}
+{"name":"arith.mod","args":["10%3"],"expected":{"exit":0,"stdout":"1\n0x1\n0b1\n"}}
+{"name":"arith.mod-neg","args":["--","-5 % 4"],"expected":{"exit":0,"stdout":"3\n0x3\n0b11\n"}}
+{"name":"arith.pow","args":["2**3"],"expected":{"exit":0,"stdout":"8\n0x8\n0b1000\n"}}
+{"name":"arith.pow-right-assoc","args":["2**3**2"],"expected":{"exit":0,"stdout":"512\n0x200\n0b1000000000\n"}}
+{"name":"arith.pow-neg-exp","args":["2**-1"],"expected":{"exit":0,"stdout":"0.5\n"}}
+{"name":"arith.pow-zero","args":["0**0"],"expected":{"exit":0,"stdout":"1\n0x1\n0b1\n"}}
+{"name":"arith.unary-plus","args":["+42"],"expected":{"exit":0,"stdout":"42\n0x2a\n0b101010\n"}}
+{"name":"arith.unary-minus","args":["--","-1"],"expected":{"exit":0,"stdout":"-1\n-0x1\n-0b1\n"}}
+{"name":"arith.parens","args":["(1+2)*3"],"expected":{"exit":0,"stdout":"9\n0x9\n0b1001\n"}}
+{"name":"arith.prec-add-mul","args":["2 + 3 * 4"],"expected":{"exit":0,"stdout":"14\n0xe\n0b1110\n"}}
+{"name":"arith.prec-mul-add","args":["2 * 3 + 4"],"expected":{"exit":0,"stdout":"10\n0xa\n0b1010\n"}}
+{"name":"arith.multi-argv","args":["1","+","1"],"expected":{"exit":0,"stdout":"2\n0x2\n0b10\n"}}
+{"name":"float.add","args":["1.5 + 1"],"expected":{"exit":0,"stdout":"2.5\n"}}
+{"name":"float.int-like","args":["1.0"],"expected":{"exit":0,"stdout":"1\n"}}
+{"name":"float.one-third","args":["1/3"],"expected":{"exit":0,"stdout":"0.333333333333\n"}}
+{"name":"float.0.1-plus-0.2","args":["0.1 + 0.2"],"expected":{"exit":0,"stdout":"0.3\n"}}
+{"name":"float.sqrt","args":["2**0.5"],"expected":{"exit":0,"stdout":"1.41421356237\n"}}
+{"name":"float.scientific","args":["2.5e1"],"expected":{"exit":0,"stdout":"25\n"}}
+{"name":"float.mixed","args":["1 + 2.0"],"expected":{"exit":0,"stdout":"3\n"}}
+{"name":"float.floordiv","args":["5.0 // 2.0"],"expected":{"exit":0,"stdout":"2\n"}}
+{"name":"float.mod","args":["1 % 1.5"],"expected":{"exit":0,"stdout":"1\n"}}
+{"name":"float.neg-zero","args":["--","-0.0"],"expected":{"exit":0,"stdout":"-0\n"}}
+{"name":"lit.hex","args":["0x10"],"expected":{"exit":0,"stdout":"16\n0x10\n0b10000\n"}}
+{"name":"lit.hex-upper","args":["0xFF"],"expected":{"exit":0,"stdout":"255\n0xff\n0b11111111\n"}}
+{"name":"lit.bin","args":["0b1010"],"expected":{"exit":0,"stdout":"10\n0xa\n0b1010\n"}}
+{"name":"lit.oct","args":["0o10"],"expected":{"exit":0,"stdout":"8\n0x8\n0b1000\n"}}
+{"name":"lit.leading-zeros","args":["00"],"expected":{"exit":0,"stdout":"0\n0x0\n0b0\n"}}
+{"name":"bit.shift-or","args":["0xff << 4 | 1"],"expected":{"exit":0,"stdout":"4081\n0xff1\n0b111111110001\n"}}
+{"name":"bit.and","args":["7&3"],"expected":{"exit":0,"stdout":"3\n0x3\n0b11\n"}}
+{"name":"bit.or","args":["1|2|4"],"expected":{"exit":0,"stdout":"7\n0x7\n0b111\n"}}
+{"name":"bit.xor","args":["5^3"],"expected":{"exit":0,"stdout":"6\n0x6\n0b110\n"}}
+{"name":"bit.not-zero","args":["~0"],"expected":{"exit":0,"stdout":"-1\n-0x1\n-0b1\n"}}
+{"name":"bit.not-hex","args":["~0xff"],"expected":{"exit":0,"stdout":"-256\n-0x100\n-0b100000000\n"}}
+{"name":"bit.lshift","args":["1 << 4"],"expected":{"exit":0,"stdout":"16\n0x10\n0b10000\n"}}
+{"name":"bit.rshift","args":["16 >> 2"],"expected":{"exit":0,"stdout":"4\n0x4\n0b100\n"}}
+{"name":"bit.lshift-zero","args":["1 << 0"],"expected":{"exit":0,"stdout":"1\n0x1\n0b1\n"}}
+{"name":"bit.rshift-wide","args":["1 >> 100"],"expected":{"exit":0,"stdout":"0\n0x0\n0b0\n"}}
+{"name":"bit.shift-vs-add","args":["2<<3+1"],"expected":{"exit":0,"stdout":"32\n0x20\n0b100000\n"}}
+{"name":"bit.not-neg","args":["~ -1"],"expected":{"exit":0,"stdout":"0\n0x0\n0b0\n"}}
+{"name":"json.int","args":["--json","--","1+1"],"expected":{"exit":0,"stdout_json":{"ok":true,"dec":"2","hex":"0x2","bin":"0b10"}}}
+{"name":"json.float","args":["--json","--","1/2"],"expected":{"exit":0,"stdout_json":{"ok":true,"dec":"0.5"}}}
+{"name":"json.neg","args":["--json","--","-1"],"expected":{"exit":0,"stdout_json":{"ok":true,"dec":"-1","hex":"-0x1","bin":"-0b1"}}}
+{"name":"json.shift","args":["--json","--","0xff << 4"],"expected":{"exit":0,"stdout_json":{"ok":true,"dec":"4080","hex":"0xff0","bin":"0b111111110000"}}}
+{"name":"json.short-flag","args":["-j","1+1"],"expected":{"exit":0,"stdout_json":{"ok":true,"dec":"2","hex":"0x2","bin":"0b10"}}}
+{"name":"json.err-div","args":["--json","1/0"],"expected":{"exit":1,"stdout_json":{"ok":false,"error":"division by zero"}}}
+{"name":"json.err-empty","args":["--json","--",""],"expected":{"exit":1,"stdout_json":{"ok":false,"error":"empty expression"}}}
+{"name":"stdin.expr","args":[],"stdin":"1+1\n","expected":{"exit":0,"stdout":"2\n0x2\n0b10\n"}}
+{"name":"stdin.strip","args":[],"stdin":"  1+1  \n","expected":{"exit":0,"stdout":"2\n0x2\n0b10\n"}}
+{"name":"stdin.empty","args":[],"stdin":"","expected":{"exit":1,"stdout":"","stderr":"empty expression\n"}}
+{"name":"stdin.json","args":["--json"],"stdin":"2*3\n","expected":{"exit":0,"stdout_json":{"ok":true,"dec":"6","hex":"0x6","bin":"0b110"}}}
+{"name":"stdin.json-empty","args":["--json"],"stdin":"","expected":{"exit":1,"stdout_json":{"ok":false,"error":"empty expression"}}}
+{"name":"err.empty","args":[""],"expected":{"exit":1,"stdout":"","stderr":"empty expression\n"}}
+{"name":"err.whitespace","args":["   "],"expected":{"exit":1,"stdout":"","stderr":"empty expression\n"}}
+{"name":"err.div-zero","args":["1/0"],"expected":{"exit":1,"stdout":"","stderr":"division by zero\n"}}
+{"name":"err.floordiv-zero","args":["1//0"],"expected":{"exit":1,"stdout":"","stderr":"division by zero\n"}}
+{"name":"err.mod-zero","args":["1%0"],"expected":{"exit":1,"stdout":"","stderr":"division by zero\n"}}
+{"name":"err.float-div-zero","args":["1.0/0"],"expected":{"exit":1,"stdout":"","stderr":"division by zero\n"}}
+{"name":"err.nan-div","args":["0.0/0.0"],"expected":{"exit":1,"stdout":"","stderr":"division by zero\n"}}
+{"name":"err.bool","args":["True"],"expected":{"exit":1,"stdout":"","stderr":"unsupported literal\n"}}
+{"name":"err.string","args":["\"foo\""],"expected":{"exit":1,"stdout":"","stderr":"unsupported literal\n"}}
+{"name":"err.none","args":["None"],"expected":{"exit":1,"stdout":"","stderr":"unsupported literal\n"}}
+{"name":"err.compare","args":["1==1"],"expected":{"exit":1,"stdout":"","stderr":"invalid expression\n"}}
+{"name":"err.call","args":["abs(1)"],"expected":{"exit":1,"stdout":"","stderr":"invalid expression\n"}}
+{"name":"err.incomplete","args":["1+"],"expected":{"exit":1,"stdout":"","stderr":"invalid expression\n"}}
+{"name":"err.empty-parens","args":["()"],"expected":{"exit":1,"stdout":"","stderr":"invalid expression\n"}}
+{"name":"err.list","args":["[1]"],"expected":{"exit":1,"stdout":"","stderr":"invalid expression\n"}}
+{"name":"err.bitand-float","args":["1 & 1.5"],"expected":{"exit":1,"stdout":"","stderr":"invalid operands\n"}}
+{"name":"err.neg-shift","args":["1 << -1"],"expected":{"exit":1,"stdout":"","stderr":"invalid operands\n"}}
+{"name":"err.invert-float","args":["~1.5"],"expected":{"exit":1,"stdout":"","stderr":"invalid operands\n"}}
+{"name":"err.not","args":["not 1"],"expected":{"exit":1,"stdout":"","stderr":"unsupported operator\n"}}
+{"name":"err.and","args":["1 and 2"],"expected":{"exit":1,"stdout":"","stderr":"invalid expression\n"}}
+{"name":"err.bad-bin","args":["0b2"],"expected":{"exit":1,"stdout":"","stderr":"invalid expression\n"}}
+{"name":"err.inf-literal","args":["1e309"],"expected":{"exit":1,"stdout":"","stderr":"invalid result\n"}}
+{"name":"err.inf-mul","args":["1e308 * 1e308"],"expected":{"exit":1,"stdout":"","stderr":"invalid result\n"}}
+{"name":"err.result-too-large-shift","args":["1 << 4096"],"expected":{"exit":1,"stdout":"","stderr":"result too large\n"}}
+{"name":"err.shift-too-large","args":["1 << 4097"],"expected":{"exit":1,"stdout":"","stderr":"shift too large\n"}}
+{"name":"err.result-too-large-pow","args":["2 ** 4096"],"expected":{"exit":1,"stdout":"","stderr":"result too large\n"}}

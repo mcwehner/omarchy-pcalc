@@ -62,6 +62,18 @@ To put it on your `PATH`, symlink it:
 ln -s ~/.config/omarchy/plugins/mcwehner.pcalc/bin/pcalc ~/.local/bin/pcalc
 ```
 
+## Tests
+
+CLI tests are a language-agnostic JSONL corpus plus a runner that only
+invokes the binary. Point `$PCALC` at a port to run the same suite:
+
+```bash
+tests/run
+PCALC=/path/to/other-pcalc tests/run
+```
+
+Requires `jq`. REPL, clipboard, and `--help` are out of scope.
+
 ## Removal
 
 ```bash

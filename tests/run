@@ -1,0 +1,153 @@
+#!/bin/sh
+# Language-agnostic CLI test runner for pcalc.
+# Invokes $PCALC as a subprocess; never imports an implementation.
+#
+# Usage:
+#   tests/run
+#   PCALC=/path/to/pcalc tests/run
+#
+# Requires jq.
+
+set -eu
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+root=$(CDPATH= cd -- "$script_dir/.." && pwd)
+PCALC=${PCALC:-"$root/bin/pcalc"}
+CASES=${CASES:-"$script_dir/cases.jsonl"}
+
+if ! command -v jq >/dev/null 2>&1; then
+	echo "tests/run requires jq. Install it and re-run." >&2
+	exit 2
+fi
+
+if [ ! -f "$CASES" ]; then
+	echo "cases file not found: $CASES" >&2
+	exit 2
+fi
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+
+passed=0
+failed=0
+lineno=0
+
+fail() {
+	name=$1
+	shift
+	failed=$((failed + 1))
+	printf 'FAIL %s\n' "$name"
+	for msg in "$@"; do
+		printf '     %s\n' "$msg"
+	done
+	printf '     stdout:\n'
+	sed 's/^/       /' "$tmp/stdout" || true
+	printf '     stderr:\n'
+	sed 's/^/       /' "$tmp/stderr" || true
+}
+
+while IFS= read -r line || [ -n "$line" ]; do
+	lineno=$((lineno + 1))
+	case "$line" in
+	'' | '#'*)
+		continue
+		;;
+	esac
+
+	if ! printf '%s\n' "$line" | jq -e . >/dev/null 2>"$tmp/jq.err"; then
+		failed=$((failed + 1))
+		printf 'FAIL cases.jsonl:%s (invalid JSON)\n' "$lineno"
+		sed 's/^/     /' "$tmp/jq.err" || true
+		continue
+	fi
+
+	printf '%s\n' "$line" | jq -j '.name' >"$tmp/name"
+	name=$(cat "$tmp/name")
+	if [ -z "$name" ] || [ "$name" = "null" ]; then
+		name="cases.jsonl:$lineno"
+	fi
+
+	has_stdout=$(printf '%s\n' "$line" | jq '.expected | has("stdout")')
+	has_json=$(printf '%s\n' "$line" | jq '.expected | has("stdout_json")')
+	if [ "$has_stdout" = "true" ] && [ "$has_json" = "true" ]; then
+		failed=$((failed + 1))
+		printf 'FAIL %s (stdout and stdout_json both set)\n' "$name"
+		continue
+	fi
+
+	args_sh=$(printf '%s\n' "$line" | jq -r '.args | @sh')
+	eval "set -- $args_sh"
+
+	set +e
+	if printf '%s\n' "$line" | jq -e 'has("stdin")' >/dev/null; then
+		printf '%s\n' "$line" | jq -j '.stdin' >"$tmp/stdin"
+		"$PCALC" "$@" <"$tmp/stdin" >"$tmp/stdout" 2>"$tmp/stderr"
+	else
+		"$PCALC" "$@" </dev/null >"$tmp/stdout" 2>"$tmp/stderr"
+	fi
+	actual_exit=$?
+	set -e
+
+	expected_exit=$(printf '%s\n' "$line" | jq -r '.expected.exit')
+	printf '%s\n' "$line" | jq -j '.expected.stderr // ""' >"$tmp/expected_stderr"
+
+	msgs=
+	if [ "$actual_exit" != "$expected_exit" ]; then
+		msgs="exit: expected $expected_exit, got $actual_exit"
+	fi
+
+	if [ "$has_json" = "true" ]; then
+		if ! jq -e . "$tmp/stdout" >/dev/null 2>"$tmp/jq.err"; then
+			if [ -n "$msgs" ]; then
+				msgs="$msgs|stdout is not JSON"
+			else
+				msgs="stdout is not JSON"
+			fi
+		else
+			if ! printf '%s\n' "$line" | jq -e --slurpfile actual "$tmp/stdout" \
+				'.expected.stdout_json == $actual[0]' >/dev/null; then
+				printf '%s\n' "$line" | jq -c '.expected.stdout_json' >"$tmp/expected_json"
+				if [ -n "$msgs" ]; then
+					msgs="$msgs|JSON: expected $(cat "$tmp/expected_json")"
+				else
+					msgs="JSON: expected $(cat "$tmp/expected_json")"
+				fi
+			fi
+		fi
+	else
+		printf '%s\n' "$line" | jq -j '.expected.stdout // ""' >"$tmp/expected_stdout"
+		if ! cmp -s "$tmp/expected_stdout" "$tmp/stdout"; then
+			if [ -n "$msgs" ]; then
+				msgs="$msgs|stdout differs"
+			else
+				msgs="stdout differs"
+			fi
+		fi
+	fi
+
+	if ! cmp -s "$tmp/expected_stderr" "$tmp/stderr"; then
+		if [ -n "$msgs" ]; then
+			msgs="$msgs|stderr differs"
+		else
+			msgs="stderr differs"
+		fi
+	fi
+
+	if [ -n "$msgs" ]; then
+		oldifs=$IFS
+		IFS='|'
+		# shellcheck disable=SC2086
+		set -- $msgs
+		IFS=$oldifs
+		fail "$name" "$@"
+	else
+		passed=$((passed + 1))
+		printf 'ok   %s\n' "$name"
+	fi
+done <"$CASES"
+
+printf '\n%s passed, %s failed\n' "$passed" "$failed"
+if [ "$failed" -ne 0 ]; then
+	exit 1
+fi
+exit 0
