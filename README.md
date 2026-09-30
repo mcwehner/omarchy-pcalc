@@ -46,16 +46,20 @@ supported operators and literals.
 
 ## Bar widget
 
-A calculator button on the bar toggles the overlay without a keybind:
+`--enable` places a calculator button on the right of the bar. Click it to
+toggle the overlay.
+
+If the button is missing after enable, a leftover overlay entry in
+`plugins[]` is probably blocking bar placement. Delete
+`{ "id": "mcwehner.pcalc" }` from `plugins[]` in
+`~/.config/omarchy/shell.json`, then run:
 
 ```bash
-omarchy bar put mcwehner.pcalc --section right
+omarchy plugin enable mcwehner.pcalc --section right
 ```
 
-New installs with `--enable` place it on the right automatically. If the
-overlay is already enabled and that command does nothing, add
-`{ "id": "mcwehner.pcalc" }` to a `bar.layout` section in
-`~/.config/omarchy/shell.json`. The shell reloads on save.
+You can also add `{ "id": "mcwehner.pcalc" }` to a `bar.layout` section
+yourself. The shell reloads on save.
 
 ## CLI
 
