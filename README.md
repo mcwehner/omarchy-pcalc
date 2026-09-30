@@ -65,14 +65,14 @@ ln -s ~/.config/omarchy/plugins/mcwehner.pcalc/bin/pcalc ~/.local/bin/pcalc
 pcalc evaluates one arithmetic expression. Parentheses and Python operator
 precedence apply. Integer results are limited to 4096 bits.
 
-| Operators | Meaning |
-| --- | --- |
+| Operators       | Meaning                                |
+| --------------- | -------------------------------------- |
 | `+` `-` `*` `/` | add, subtract, multiply, true division |
-| `//` `%` | floor division, modulo |
-| `**` | exponentiation (right-associative) |
-| `+x` `-x` `~` | unary plus, minus, bitwise invert |
-| `&` `\|` `^` | bitwise and, or, xor |
-| `<<` `>>` | left and right shift |
+| `//` `%`        | floor division, modulo                 |
+| `**`            | exponentiation (right-associative)     |
+| `+x` `-x` `~`   | unary plus, minus, bitwise invert      |
+| `&` `\|` `^`    | bitwise and, or, xor                   |
+| `<<` `>>`       | left and right shift                   |
 
 Literals: decimal integers, `0x` / `0b` / `0o` integers, and floats
 (`1.5`, `2.5e1`).
@@ -88,8 +88,7 @@ Floats print a single decimal line (up to 12 significant digits).
 
 `-j` / `--json` prints one JSON object. Success looks like
 `{"ok":true,"dec":"4080","hex":"0xff0","bin":"0b111111110000"}`; floats omit
-`hex` and `bin`. Failures print `{"ok":false,"error":"…"}` on stdout and exit
-1.
+`hex` and `bin`. Failures print `{"ok":false,"error":"…"}` on stdout and exit 1.
 
 `-c` / `--copy` `[dec|hex|bin]` copies one representation with `wl-copy`
 (default: `dec`). Hex and bin are only available for integer results.
