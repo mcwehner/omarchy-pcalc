@@ -22,8 +22,9 @@ symlink to the plugin folder does not need to be recreated.
 
 ## Overlay
 
-Toggle the overlay with `omarchy-shell shell toggle mcwehner.pcalc`. To use it
-in place of Omacalc, add this to `~/.config/hypr/bindings.lua`:
+Toggle the overlay with `omarchy-shell shell toggle mcwehner.pcalc`, or click
+the bar button if you have added it. To use it in place of Omacalc, add this
+to `~/.config/hypr/bindings.lua`:
 
 ```lua
 -- Replace the default Omacalc bindings with pcalc
@@ -42,6 +43,19 @@ applied cleanly.
 
 The overlay evaluates expressions with `bin/pcalc`. See [CLI](#cli) for
 supported operators and literals.
+
+## Bar widget
+
+A calculator button on the bar toggles the overlay without a keybind:
+
+```bash
+omarchy bar put mcwehner.pcalc --section right
+```
+
+New installs with `--enable` place it on the right automatically. If the
+overlay is already enabled and that command does nothing, add
+`{ "id": "mcwehner.pcalc" }` to a `bar.layout` section in
+`~/.config/omarchy/shell.json`. The shell reloads on save.
 
 ## CLI
 
@@ -103,10 +117,13 @@ Otherwise the expression is read from stdin. Arguments are joined with spaces
 omarchy plugin remove mcwehner.pcalc
 ```
 
-This disables the plugin and deletes its folder. Then undo anything you
-added by hand:
+This disables the plugin, takes the bar button off the layout, and deletes
+its folder. Then undo anything you added by hand:
 
 - **Keybinding:** delete the pcalc lines from `~/.config/hypr/bindings.lua`,
   including the `hl.unbind(...)` lines, so the default Omacalc bindings come
   back. Run `hyprctl reload` and check `hyprctl configerrors`.
+- **Bar widget:** if you added `{ "id": "mcwehner.pcalc" }` to
+  `~/.config/omarchy/shell.json` by hand and it is still there, delete that
+  entry.
 - **CLI symlink:** `rm ~/.local/bin/pcalc`
