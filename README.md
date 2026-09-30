@@ -9,10 +9,6 @@ expression and see the result in decimal, hex, and binary.
 omarchy plugin add https://github.com/mcwehner/omarchy-pcalc.git --enable
 ```
 
-`--enable` turns on the overlay and places a bar button on the right. The
-button is optional; see [Bar widget](#bar-widget) to skip it or remove it
-later.
-
 Requires `python3` and `wl-copy` (from `wl-clipboard`).
 
 ## Update
@@ -26,9 +22,8 @@ symlink to the plugin folder does not need to be recreated.
 
 ## Overlay
 
-Toggle the overlay with `omarchy-shell shell toggle mcwehner.pcalc`, or click
-the bar button if you have added it. To use it in place of Omacalc, add this
-to `~/.config/hypr/bindings.lua`:
+Toggle the overlay with `omarchy-shell shell toggle mcwehner.pcalc`. To use it
+in place of Omacalc, add this to `~/.config/hypr/bindings.lua`:
 
 ```lua
 -- Replace the default Omacalc bindings with pcalc
@@ -47,33 +42,6 @@ applied cleanly.
 
 The overlay evaluates expressions with `bin/pcalc`. See [CLI](#cli) for
 supported operators and literals.
-
-## Bar widget
-
-The calculator button is optional. Click it to toggle the overlay. Omarchy
-has no “overlay only” enable flag, so `--enable` also puts the button on
-the right.
-
-To keep the overlay and drop the button, edit
-`~/.config/omarchy/shell.json`:
-
-1. Make sure `plugins[]` contains `{ "id": "mcwehner.pcalc" }`.
-2. Delete `{ "id": "mcwehner.pcalc" }` from every `bar.layout` section.
-
-Save; the shell reloads. Keybinds still work. `omarchy plugin disable`
-alone is not enough: it takes the button off the bar and disables the
-overlay unless that `plugins[]` entry is already there.
-
-To add the button later, put `{ "id": "mcwehner.pcalc" }` in a
-`bar.layout` section (for example `right`). `omarchy bar put` will not
-do this if the overlay is already in `plugins[]`.
-
-If `--enable` reports success but no button appears, a leftover
-`plugins[]` entry is blocking bar placement. Delete that entry, then:
-
-```bash
-omarchy plugin enable mcwehner.pcalc --section right
-```
 
 ## CLI
 
@@ -135,13 +103,12 @@ Otherwise the expression is read from stdin. Arguments are joined with spaces
 omarchy plugin remove mcwehner.pcalc
 ```
 
-This disables the plugin, takes the bar button off the layout, and deletes
-its folder. Then undo anything you added by hand:
+This disables the plugin and deletes its folder. Then undo anything you
+added by hand:
 
 - **Keybinding:** delete the pcalc lines from `~/.config/hypr/bindings.lua`,
   including the `hl.unbind(...)` lines, so the default Omacalc bindings come
   back. Run `hyprctl reload` and check `hyprctl configerrors`.
-- **Bar widget:** if you added `{ "id": "mcwehner.pcalc" }` to
-  `~/.config/omarchy/shell.json` by hand and it is still there, delete that
-  entry.
+- **Bar layout:** if a 1.1.x install left `{ "id": "mcwehner.pcalc" }` in
+  `bar.layout`, delete that entry from `~/.config/omarchy/shell.json`.
 - **CLI symlink:** `rm ~/.local/bin/pcalc`
